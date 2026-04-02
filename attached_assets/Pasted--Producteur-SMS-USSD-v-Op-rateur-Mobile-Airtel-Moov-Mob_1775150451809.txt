@@ -1,0 +1,66 @@
+[ Producteur ]
+   | SMS / USSD
+   v
+[ Opérateur Mobile ]
+   (Airtel / Moov Mobile Cash)
+   v
+[ SMS / USSD Gateway ]
+   (ex: Africa’s Talking ou API locale Airtel/Moov)
+   v
+[ Backend Gabon Terran ]
+   - Parse SMS/USSD
+   - Vérifie producteur enregistré
+   - Crée produit / annonce / commande
+   - Gère les paiements via Airtel Money / Mobile Cash
+   v
+[ Base de Données ]
+   - Producteurs
+   - Produits
+   - Commandes
+   - Transactions Mobile Money
+   v
+[ Application Acheteurs ]
+   - Affiche les produits
+   - Permet paiement via Airtel Money / Mobile Cash
+   v
+[ Backend Gabon Terran ]
+   - Confirme paiement
+   - Notifie le producteur par SMS
+   v
+[ Producteur ]
+   - Reçoit notification paiement et commande
+🔹 Détails des composants
+1️⃣ Producteur
+Téléphone basique ou smartphone
+Envoie un SMS structuré ou utilise le menu USSD pour :
+Enregistrer un produit
+Mettre à jour quantité / prix
+Recevoir confirmation de vente
+2️⃣ Opérateur Mobile
+Airtel Money et Moov Mobile Cash uniquement
+Gère les transactions et le transfert d’argent
+Fournit un accès via API ou via USSD/SMS Gateway
+3️⃣ SMS / USSD Gateway
+Service intermédiaire qui :
+Reçoit les SMS/USSD entrants
+Transforme les commandes en format JSON pour ton backend
+Options : Africa’s Talking ou API locale d’Airtel / Moov
+4️⃣ Backend Gabon Terran
+Analyse le message du producteur
+Vérifie que les champs sont corrects (produit, quantité, prix)
+Ajoute le produit à la base ou met à jour la commande
+Envoie les notifications et gère le paiement via Airtel Money / Mobile Cash
+5️⃣ Base de données
+Producteurs : ID, nom, téléphone, zone
+Produits : producteur_id, type, quantité, prix, statut
+Commandes : acheteur_id, produit_id, quantité, paiement_status
+Transactions Mobile Money : producteur_id, montant, date, type (Airtel/Moov)
+6️⃣ Application Acheteurs
+Affiche tous les produits disponibles
+Permet paiement 100 % Mobile Money (Airtel Money / Moov Mobile Cash)
+Backend valide la transaction et notifie le producteur
+7️⃣ Notification
+Après paiement réussi :
+
+"Votre produit X a été vendu. Paiement de XXX FCFA reçu via Airtel Money / Mobile Cash."
+Option : un agent local peut aider à la livraison si nécessaire
