@@ -51,6 +51,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_NO_GIT_STATUS_CHECK: '1'
           EAS_SKIP_AUTO_FINGERPRINT: '1'
+          EXPO_NO_DOCTOR: '1'
           CI: '1'
         working-directory: artifacts/mobile
         run: |
