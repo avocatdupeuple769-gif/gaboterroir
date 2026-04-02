@@ -1,0 +1,17 @@
+{
+  "name": "gaboterroir-api",
+  "version": "1.0.0",
+  "description": "GaboTerroir API Server - standalone deployment",
+  "type": "module",
+  "scripts": {
+    "start": "node --enable-source-maps ./index.mjs",
+    "migrate": "node ./migrate.mjs",
+    "setup": "node ./migrate.mjs && node --enable-source-maps ./index.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
