@@ -38,8 +38,8 @@ jobs:
       - name: Enable pnpm via corepack
         run: corepack enable && corepack prepare pnpm@10 --activate
 
-      - name: Install all workspace dependencies
-        run: pnpm install --no-frozen-lockfile
+      - name: Install workspace dependencies (mobile only)
+        run: pnpm install --filter @workspace/mobile... --no-frozen-lockfile
         env:
           CI: true
 
