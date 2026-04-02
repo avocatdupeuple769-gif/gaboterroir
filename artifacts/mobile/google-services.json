@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "618213534392",
+    "project_id": "gabonterrior",
+    "storage_bucket": "gabonterrior.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:618213534392:android:f02661ef635db406a1224d",
+        "android_client_info": {
+          "package_name": "com.gabonterrior.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcOjL_e241I9OCnODB_2fPKCb1XJYRMBE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
