@@ -1,0 +1,196 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import createContextHook from '@nkzw/create-context-hook';
+import { User, UserRole, KycStatus, KycData } from '@/types';
+
+const STORAGE_KEY = 'gaboTerroir_user';
+
+const DEFAULT_KYC_DATA: KycData = {
+  documentPhoto: null,
+  documentType: null,
+  extractedName: null,
+  extractedBirthdate: null,
+  documentExpiry: null,
+  selfiePhoto: null,
+  livenessVerified: false,
+  facialMatchScore: 0,
+  gpsPhoto: null,
+  gpsLatitude: null,
+  gpsLongitude: null,
+  gpsProvince: null,
+  vehiclePhoto: null,
+  insurancePhoto: null,
+  verifiedAt: null,
+};
+
+export const [AuthProvider, useAuth] = createContextHook(() => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const userQuery = useQuery({
+    queryKey: ['auth_user'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored) as User;
+      }
+      return null;
+    },
+  });
+
+  useEffect(() => {
+    if (!userQuery.isLoading) {
+      if (userQuery.data) {
+        setUser(userQuery.data);
+      }
+      setIsLoading(false);
+    }
+  }, [userQuery.data, userQuery.isLoading]);
+
+  const loginMutation = useMutation({
+    mutationFn: async ({ telephone, role }: { telephone: string; role?: UserRole }) => {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const selectedRole = role ?? 'acheteur';
+      console.log('[Auth] Creating user with role:', selectedRole);
+      const newUser: User = {
+        id: 'u_' + Date.now(),
+        nom: '',
+        prenom: '',
+        ville: '',
+        quartier: '',
+        telephone,
+        role: selectedRole,
+        photoProfile: '',
+        cniVerified: false,
+        province: '',
+        walletSolde: 0,
+        note: 0,
+        createdAt: new Date().toISOString(),
+        kycStatus: selectedRole ? 'document_pending' : 'none',
+        kycData: null,
+      };
+      return newUser;
+    },
+    onSuccess: async (data) => {
+      setUser(data);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      console.log('[Auth] Login success, role:', data.role);
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async ({ _otp }: { _otp: string }) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true;
+    },
+  });
+
+  const setRoleMutation = useMutation({
+    mutationFn: async (role: UserRole) => {
+      if (!user) throw new Error('No user');
+      const updated = { ...user, role };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+      void queryClient.invalidateQueries({ queryKey: ['auth_user'] });
+    },
+  });
+
+  const updateWalletMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!user) throw new Error('No user');
+      const updated = { ...user, walletSolde: user.walletSolde + amount };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    },
+    onSuccess: () => {
+      setUser(null);
+      queryClient.clear();
+    },
+  });
+
+  const completeOnboarding = useCallback(async (role: UserRole) => {
+    const currentUser = user;
+    if (!currentUser) {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsedUser = JSON.parse(stored) as User;
+        const updated = { ...parsedUser, role, kycStatus: 'document_pending' as KycStatus };
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setUser(updated);
+        return;
+      }
+      return;
+    }
+    const updated = { ...currentUser, role, kycStatus: 'document_pending' as KycStatus };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+  }, [user]);
+
+  const updatePersonalInfo = useCallback(async (info: { nom: string; prenom: string; ville: string; quartier: string }) => {
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      nom: info.nom,
+      prenom: info.prenom,
+      ville: info.ville,
+      quartier: info.quartier,
+    };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+    console.log('[Auth] Personal info updated:', info.nom, info.prenom);
+  }, [user]);
+
+  const updateProvince = useCallback(async (province: string) => {
+    if (!user) return;
+    const updated: User = { ...user, province };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+    console.log('[Auth] Province updated:', province);
+  }, [user]);
+
+  const updateKyc = useCallback(async (kycStatus: KycStatus, kycData: Partial<KycData>) => {
+    if (!user) return;
+    const mergedKyc: KycData = { ...(user.kycData ?? DEFAULT_KYC_DATA), ...kycData };
+    const updated: User = {
+      ...user,
+      kycStatus,
+      kycData: mergedKyc,
+      nom: kycData.extractedName ?? user.nom,
+      photoProfile: kycData.selfiePhoto ?? user.photoProfile,
+      cniVerified: kycStatus === 'verified',
+      province: kycData.gpsProvince ?? user.province,
+    };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+  }, [user]);
+
+  return useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    login: loginMutation,
+    verifyOtp: verifyOtpMutation,
+    setRole: setRoleMutation,
+    updateWallet: updateWalletMutation,
+    logout: logoutMutation,
+    completeOnboarding,
+    updatePersonalInfo,
+    updateProvince,
+    updateKyc,
+  }), [user, isLoading, loginMutation, verifyOtpMutation, setRoleMutation, updateWalletMutation, logoutMutation, completeOnboarding, updatePersonalInfo, updateProvince, updateKyc]);
+});
