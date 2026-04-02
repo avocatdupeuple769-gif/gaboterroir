@@ -1,0 +1,85 @@
+export interface VideoDemo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  duration: string;
+  views: number;
+  createdAt: string;
+  productId: string;
+  productName: string;
+  status: 'draft' | 'published' | 'processing';
+}
+
+export interface VideoTip {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export const MOCK_VIDEO_DEMOS: VideoDemo[] = [
+  {
+    id: 'vid1',
+    title: 'Mes bananes plantain de Ntoum',
+    description: 'Regardez la qualité de nos bananes fraîchement récoltées ce matin.',
+    thumbnail: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=600&h=400&fit=crop',
+    duration: '0:45',
+    views: 234,
+    createdAt: '2026-03-27T10:00:00Z',
+    productId: '1',
+    productName: 'Bananes Plantain',
+    status: 'published',
+  },
+  {
+    id: 'vid2',
+    title: 'Récolte des ignames',
+    description: 'Venez voir comment nous cultivons nos ignames bio dans le village.',
+    thumbnail: 'https://images.unsplash.com/photo-1590165482129-1b8b27698780?w=600&h=400&fit=crop',
+    duration: '1:12',
+    views: 156,
+    createdAt: '2026-03-25T14:00:00Z',
+    productId: '4',
+    productName: 'Ignames',
+    status: 'published',
+  },
+  {
+    id: 'vid3',
+    title: 'Notre plantation vue du ciel',
+    description: 'Survol de notre plantation familiale.',
+    thumbnail: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&h=400&fit=crop',
+    duration: '2:03',
+    views: 0,
+    createdAt: '2026-03-28T08:00:00Z',
+    productId: '',
+    productName: '',
+    status: 'processing',
+  },
+];
+
+export const VIDEO_TIPS: VideoTip[] = [
+  {
+    id: 't1',
+    icon: '🎥',
+    title: 'Filmez en plein jour',
+    description: 'La lumière naturelle donne un meilleur rendu pour vos produits.',
+  },
+  {
+    id: 't2',
+    icon: '📏',
+    title: 'Minimum 2 minutes',
+    description: 'Vos vidéos doivent durer au moins 2 minutes pour bien présenter vos produits.',
+  },
+  {
+    id: 't3',
+    icon: '🗣️',
+    title: 'Présentez-vous',
+    description: 'Montrez votre visage et parlez de votre produit avec passion.',
+  },
+  {
+    id: 't4',
+    icon: '🌿',
+    title: 'Montrez le terrain',
+    description: 'Filmez votre plantation ou votre lieu de production.',
+  },
+];
