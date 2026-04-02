@@ -84,10 +84,10 @@ export default function HomeScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.quickCard, { opacity: pressed ? 0.88 : 1 }]}
-              onPress={() => router.push('/leaderboard' as any)}
+              onPress={() => router.push('/sms-access' as any)}
             >
-              <Feather name="award" size={22} color={Colors.warning} />
-              <Text style={styles.quickCardLabel}>Classement</Text>
+              <Feather name="message-square" size={22} color="#7B1FA2" />
+              <Text style={styles.quickCardLabel}>Accès SMS</Text>
             </Pressable>
           </View>
 
@@ -132,7 +132,7 @@ export default function HomeScreen() {
   // Acheteur view
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 10 }]}>
+      <View style={[styles.buyerHeader, { paddingTop: topPad + 10 }]}>
         <Text style={styles.pageTitle}>Boutique</Text>
         <View style={styles.searchBar}>
           <Feather name="search" size={16} color={Colors.textMuted} />
@@ -396,6 +396,11 @@ const styles = StyleSheet.create({
   statsBannerLabel: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   statsBannerDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
   sectionHeading: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 8 },
+  buyerHeader: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 16, paddingBottom: 10,
+    flexDirection: 'column', gap: 10,
+  },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: Colors.surface, borderRadius: 14,
