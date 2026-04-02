@@ -1,0 +1,1061 @@
+import { ProductCategory } from '@/types';
+
+export const CATEGORIES: { label: ProductCategory; icon: string }[] = [
+  { label: 'Tubercules', icon: ' ' },
+  { label: 'Fruits', icon: ' ' },
+  { label: 'Légumes', icon: ' ' },
+  { label: 'Céréales', icon: ' ' },
+  { label: 'Viande & Poisson', icon: ' ' },
+  { label: 'Épices', icon: ' ' },
+  { label: 'Boissons', icon: ' ' },
+  { label: 'Autre', icon: ' ' },
+];
+const Colors = {
+  primary: '#0D7C3D',
+  primaryDark: '#065A2B',
+  primaryLight: '#E8F5E9',
+  accent: '#FCD116',
+  blue: '#003DA5',
+  blueSoft: '#EBF0FA',
+  text: '#1A1A1A',
+  textSecondary: '#6B7280',
+  textLight: '#9CA3AF',
+  textMuted: '#9CA3AF',
+  background: '#F7F5F2',
+  surface: '#FFFFFF',
+  border: '#E5E7EB',
+  borderLight: '#F0F0F0',
+  white: '#FFFFFF',
+  error: '#DC2626',
+  success: '#16A34A',
+  warning: '#F59E0B',
+  star: '#FFB800',
+  escrow: '#E5B800',
+  backgroundCard: '#FFFFFF',
+  primaryPale: '#E8F5E9',
+  light: {
+    text: '#1A1A1A',
+    background: '#F7F5F2',
+    tint: '#0D7C3D',
+    tabIconDefault: '#9CA3AF',
+    tabIconSelected: '#0D7C3D',
+    primary: '#0D7C3D',
+    primaryPale: '#E8F5E9',
+    accent: '#FCD116',
+    textSecondary: '#6B7280',
+    textMuted: '#9CA3AF',
+    border: '#E5E7EB',
+    backgroundCard: '#FFFFFF',
+  },
+};
+
+export default Colors; import { Province } from '@/types';
+
+export const PROVINCES: Province[] = [
+  'Estuaire',
+  'Haut-Ogooué',
+  'Moyen-Ogooué',
+  'Ngounié',
+  'Nyanga',
+  'Ogooué-Ivindo',
+  'Ogooué-Lolo',
+  'Ogooué-Maritime',
+  'Woleu-Ntem',
+];
+
+export const PROVINCE_CITIES: Record<Province, string[]> = {
+  'Estuaire': ['Libreville', 'Owendo', 'Akanda', 'Ntoum'],
+  'Haut-Ogooué': ['Franceville', 'Moanda', 'Mounana'],
+  'Moyen-Ogooué': ['Lambaréné', 'Ndjolé'],
+  'Ngounié': ['Mouila', 'Ndendé', 'Fougamou'],
+  'Nyanga': ['Tchibanga', 'Mayumba', 'Moabi'],
+  'Ogooué-Ivindo': ['Makokou', 'Booué', 'Mékambo'],
+  'Ogooué-Lolo': ['Koulamoutou', 'Lastoursville'],
+  'Ogooué-Maritime': ['Port-Gentil', 'Gamba', 'Omboué'],
+  'Woleu-Ntem': ['Oyem', 'Bitam', 'Minvoul', 'Mitzic'],
+};
+import { useState, useMemo, useCallback } from 'react';
+import createContextHook from '@nkzw/create-context-hook';
+import { MOCK_PRODUCTS } from '@/mocks/products';
+import { Product as BaseProduct, FlashSale } from '@/types';
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  province: string;
+  pricePerUnit: number;
+  unit: string;
+  quantity: number;
+  farmerName: string;
+  city: string;
+  createdAt: string;
+  photoProduct: string;
+  vendeurPhoto: string;
+  vendeurNote: number;
+  flashSale?: FlashSale;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+function mapProduct(p: BaseProduct): Product {
+  return {
+    id: p.id,
+    name: p.nom,
+    category: p.categorie.toLowerCase(),
+    province: p.province,
+    pricePerUnit: p.flashSale?.active ? p.flashSale.discountedPrice : p.prix,
+    unit: p.unite,
+    quantity: p.quantite,
+    farmerName: p.vendeurNom,
+    city: p.coordonneesGPS.village,
+    createdAt: p.createdAt,
+    photoProduct: p.photoProduct,
+    vendeurPhoto: p.vendeurPhoto,
+    vendeurNote: p.vendeurNote,
+    flashSale: p.flashSale,
+  };
+}
+
+export const [AppProvider, useApp] = createContextHook(() => {
+  const [rawProducts, setRawProducts] = useState<BaseProduct[]>(MOCK_PRODUCTS);
+
+  const products = useMemo<Product[]>(
+    () => rawProducts.filter(p => p.statut === 'disponible').map(mapProduct),
+    [rawProducts]
+  );
+
+  const flashSaleProducts = useMemo<Product[]>(() => {
+    const now = new Date().getTime();
+    return products.filter(p => {
+      if (!p.flashSale?.active) return false;
+      const expires = new Date(p.flashSale.expiresAt).getTime();
+      return expires > now;
+    });
+  }, [products]);
+
+  const activateFlashSale = useCallback((productId: string, discountPercent: number) => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    setRawProducts(prev =>
+      prev.map(p => {
+        if (p.id !== productId) return p;
+        const discountedPrice = Math.round(p.prix * (1 - discountPercent / 100));
+        const flashSale: FlashSale = {
+          active: true,
+          discountPercent,
+          originalPrice: p.prix,
+          discountedPrice,
+          startedAt: now.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+        };
+        return { ...p, flashSale };
+      })
+    );
+  }, []);
+
+  const cancelFlashSale = useCallback((productId: string) => {
+    setRawProducts(prev =>
+      prev.map(p => {
+        if (p.id !== productId) return p;
+        return { ...p, flashSale: undefined };
+      })
+    );
+  }, []);
+
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  const addToCart = useCallback((product: Product, qty: number) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.product.id === product.id);
+      if (existing) {
+        return prev.map(i =>
+          i.product.id === product.id
+            ? { ...i, quantity: i.quantity + qty }
+            : i
+        );
+      }
+      return [...prev, { product, quantity: qty }];
+    });
+  }, []);
+
+  const removeFromCart = useCallback((productId: string) => {
+    setCart(prev => prev.filter(i => i.product.id !== productId));
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setCart([]);
+  }, []);
+
+  const cartTotal = useMemo(
+    () => cart.reduce((s, i) => s + i.product.pricePerUnit * i.quantity, 0),
+    [cart]
+  );
+
+  return useMemo(() => ({
+    products,
+    flashSaleProducts,
+    cart,
+    addToCart,
+    removeFromCart,
+    clearCart,
+    cartTotal,
+    activateFlashSale,
+    cancelFlashSale,
+  }), [products, flashSaleProducts, cart, addToCart, removeFromCart, clearCart, cartTotal, activateFlashSale, cancelFlashSale]);
+});
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import createContextHook from '@nkzw/create-context-hook';
+import { User, UserRole, KycStatus, KycData } from '@/types';
+
+const STORAGE_KEY = 'gaboTerroir_user';
+
+const DEFAULT_KYC_DATA: KycData = {
+  documentPhoto: null,
+  documentType: null,
+  extractedName: null,
+  extractedBirthdate: null,
+  documentExpiry: null,
+  selfiePhoto: null,
+  livenessVerified: false,
+  facialMatchScore: 0,
+  gpsPhoto: null,
+  gpsLatitude: null,
+  gpsLongitude: null,
+  gpsProvince: null,
+  vehiclePhoto: null,
+  insurancePhoto: null,
+  verifiedAt: null,
+};
+
+export const [AuthProvider, useAuth] = createContextHook(() => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const userQuery = useQuery({
+    queryKey: ['auth_user'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored) as User;
+      }
+      return null;
+    },
+  });
+
+  useEffect(() => {
+    if (!userQuery.isLoading) {
+      if (userQuery.data) {
+        setUser(userQuery.data);
+      }
+      setIsLoading(false);
+    }
+  }, [userQuery.data, userQuery.isLoading]);
+
+  const loginMutation = useMutation({
+    mutationFn: async ({ telephone, role }: { telephone: string; role?: UserRole }) => {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const selectedRole = role ?? 'acheteur';
+      console.log('[Auth] Creating user with role:', selectedRole);
+      const newUser: User = {
+        id: 'u_' + Date.now(),
+        nom: '',
+        prenom: '',
+        ville: '',
+        quartier: '',
+        telephone,
+        role: selectedRole,
+        photoProfile: '',
+        cniVerified: false,
+        province: '',
+        walletSolde: 0,
+        note: 0,
+        createdAt: new Date().toISOString(),
+        kycStatus: selectedRole ? 'document_pending' : 'none',
+        kycData: null,
+      };
+      return newUser;
+    },
+    onSuccess: async (data) => {
+      setUser(data);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      console.log('[Auth] Login success, role:', data.role);
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async ({ _otp }: { _otp: string }) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true;
+    },
+  });
+
+  const setRoleMutation = useMutation({
+    mutationFn: async (role: UserRole) => {
+      if (!user) throw new Error('No user');
+      const updated = { ...user, role };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+      void queryClient.invalidateQueries({ queryKey: ['auth_user'] });
+    },
+  });
+
+  const updateWalletMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!user) throw new Error('No user');
+      const updated = { ...user, walletSolde: user.walletSolde + amount };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    },
+    onSuccess: () => {
+      setUser(null);
+      queryClient.clear();
+    },
+  });
+
+  const completeOnboarding = useCallback(async (role: UserRole) => {
+    const currentUser = user;
+    if (!currentUser) {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsedUser = JSON.parse(stored) as User;
+        const updated = { ...parsedUser, role, kycStatus: 'document_pending' as KycStatus };
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setUser(updated);
+        return;
+      }
+      return;
+    }
+    const updated = { ...currentUser, role, kycStatus: 'document_pending' as KycStatus };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+  }, [user]);
+
+  const updatePersonalInfo = useCallback(async (info: { nom: string; prenom: string; ville: string; quartier: string }) => {
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      nom: info.nom,
+      prenom: info.prenom,
+      ville: info.ville,
+      quartier: info.quartier,
+    };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+    console.log('[Auth] Personal info updated:', info.nom, info.prenom);
+  }, [user]);
+
+  const updateProvince = useCallback(async (province: string) => {
+    if (!user) return;
+    const updated: User = { ...user, province };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+    console.log('[Auth] Province updated:', province);
+  }, [user]);
+
+  const updateKyc = useCallback(async (kycStatus: KycStatus, kycData: Partial<KycData>) => {
+    if (!user) return;
+    const mergedKyc: KycData = { ...(user.kycData ?? DEFAULT_KYC_DATA), ...kycData };
+    const updated: User = {
+      ...user,
+      kycStatus,
+      kycData: mergedKyc,
+      nom: kycData.extractedName ?? user.nom,
+      photoProfile: kycData.selfiePhoto ?? user.photoProfile,
+      cniVerified: kycStatus === 'verified',
+      province: kycData.gpsProvince ?? user.province,
+    };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+  }, [user]);
+
+  return useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    login: loginMutation,
+    verifyOtp: verifyOtpMutation,
+    setRole: setRoleMutation,
+    updateWallet: updateWalletMutation,
+    logout: logoutMutation,
+    completeOnboarding,
+    updatePersonalInfo,
+    updateProvince,
+    updateKyc,
+  }), [user, isLoading, loginMutation, verifyOtpMutation, setRoleMutation, updateWalletMutation, logoutMutation, completeOnboarding, updatePersonalInfo, updateProvince, updateKyc]);
+});
+export interface BonusVoyageDestination {
+  id: string;
+  name: string;
+  country: string;
+  image: string;
+  description: string;
+  included: string[];
+}
+
+export interface BonusVoyageWinner {
+  id: string;
+  prenom: string;
+  province: string;
+  photo: string;
+  ventesValidees: number;
+  rank: number;
+  destination: string;
+}
+
+export const VOYAGE_DESTINATIONS: BonusVoyageDestination[] = [
+  {
+    id: 'd1',
+    name: 'Marrakech',
+    country: 'Maroc',
+    image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=600&h=400&fit=crop',
+    description: 'Explorez les souks colorés, les palais et la cuisine marocaine.',
+    included: ['Billet A/R', 'Hôtel 4 étoiles (5 nuits)', 'Visa', 'Restauration', 'Excursions guidées'],
+  },
+  {
+    id: 'd2',
+    name: 'Dubaï',
+    country: 'Émirats Arabes Unis',
+    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&h=400&fit=crop',
+    description: 'Découvrez la ville futuriste, ses gratte-ciels et le désert.',
+    included: ['Billet A/R', 'Hôtel 5 étoiles (4 nuits)', 'Visa', 'Restauration', 'Safari désert'],
+  },
+  {
+    id: 'd3',
+    name: 'Istanbul',
+    country: 'Turquie',
+    image: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=600&h=400&fit=crop',
+    description: 'Entre Orient et Occident, une ville riche en histoire et culture.',
+    included: ['Billet A/R', 'Hôtel 4 étoiles (5 nuits)', 'Visa', 'Restauration', 'Croisière Bosphore'],
+  },
+];
+
+export const PREVIOUS_WINNERS: BonusVoyageWinner[] = [
+  {
+    id: 'w1',
+    prenom: 'Sylvie',
+    province: 'Estuaire',
+    photo: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 1247,
+    rank: 1,
+    destination: 'Marrakech 2025',
+  },
+  {
+    id: 'w2',
+    prenom: 'Emmanuel',
+    province: 'Woleu-Ntem',
+    photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 1089,
+    rank: 2,
+    destination: 'Marrakech 2025',
+  },
+  {
+    id: 'w3',
+    prenom: 'Béatrice',
+    province: 'Ngounié',
+    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 978,
+    rank: 3,
+    destination: 'Marrakech 2025',
+  },
+  {
+    id: 'w4',
+    prenom: 'Augustin',
+    province: 'Haut-Ogooué',
+    photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 912,
+    rank: 4,
+    destination: 'Marrakech 2025',
+  },
+  {
+    id: 'w5',
+    prenom: 'Clémentine',
+    province: 'Ogooué-Maritime',
+    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 856,
+    rank: 5,
+    destination: 'Marrakech 2025',
+  },
+];export interface LeaderboardEntry {
+  id: string;
+  rank: number;
+  prenom: string;
+  province: string;
+  photo: string;
+  ventesValidees: number;
+  note: number;
+  disqualified: boolean;
+}
+
+export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+  {
+    id: 'v2',
+    rank: 1,
+    prenom: 'Marie-Claire',
+    province: 'Ngounié',
+    photo: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 847,
+    note: 4.8,
+    disqualified: false,
+  },
+  {
+    id: 'v4',
+    rank: 2,
+    prenom: 'Agathe',
+    province: 'Ogooué-Maritime',
+    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 723,
+    note: 4.9,
+    disqualified: false,
+  },
+  {
+    id: 'v8',
+    rank: 3,
+    prenom: 'Alphonsine',
+    province: 'Woleu-Ntem',
+    photo: 'https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 698,
+    note: 4.7,
+    disqualified: false,
+  },
+  {
+    id: 'v6',
+    rank: 4,
+    prenom: 'Félicité',
+    province: 'Estuaire',
+    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 612,
+    note: 4.6,
+    disqualified: false,
+  },
+  {
+    id: 'v9',
+    rank: 5,
+    prenom: 'Germaine',
+    province: 'Haut-Ogooué',
+    photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 589,
+    note: 4.5,
+    disqualified: false,
+  },
+  {
+    id: 'v3',
+    rank: 6,
+    prenom: 'Pierre',
+    province: 'Woleu-Ntem',
+    photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 534,
+    note: 4.2,
+    disqualified: false,
+  },
+  {
+    id: 'v5',
+    rank: 7,
+    prenom: 'Samuel',
+    province: 'Haut-Ogooué',
+    photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 478,
+    note: 3.9,
+    disqualified: false,
+  },
+  {
+    id: 'v10',
+    rank: 8,
+    prenom: 'Paulette',
+    province: 'Moyen-Ogooué',
+    photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 421,
+    note: 4.4,
+    disqualified: false,
+  },
+  {
+    id: 'v11',
+    rank: 9,
+    prenom: 'Robert',
+    province: 'Nyanga',
+    photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 387,
+    note: 4.1,
+    disqualified: false,
+  },
+  {
+    id: 'v1',
+    rank: 10,
+    prenom: 'Jean-Baptiste',
+    province: 'Estuaire',
+    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    ventesValidees: 352,
+    note: 4.5,
+    disqualified: false,
+  },
+];
+
+export const CURRENT_USER_STATS = {
+  userId: 'v1',
+  rank: 10,
+  ventesValidees: 352,
+  objectifTop5: 589,
+  ventesRestantes: 237,
+  periodeDebut: '2026-01-01',
+  periodeFin: '2026-12-31',
+  litiges: 0,
+  maxLitiges: 2,
+};
+import { Product } from '@/types';
+
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: '1',
+    idVendeur: 'v1',
+    vendeurNom: 'Jean-Baptiste Ndong',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.5,
+    nom: 'Bananes Plantain',
+    categorie: 'Fruits',
+    prix: 5000,
+    quantite: 50,
+    unite: 'régime',
+    photoProduct: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: 0.4162, longitude: 9.4673, village: 'Ntoum' },
+    province: 'Estuaire',
+    statut: 'disponible',
+    createdAt: '2026-03-28T10:00:00Z',
+  },
+  {
+    id: '2',
+    idVendeur: 'v2',
+    vendeurNom: 'Marie-Claire Obiang',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.8,
+    nom: 'Manioc frais',
+    categorie: 'Tubercules',
+    prix: 3000,
+    quantite: 100,
+    unite: 'sac',
+    photoProduct: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: -1.6333, longitude: 13.5833, village: 'Mouila' },
+    province: 'Ngounié',
+    statut: 'disponible',
+    createdAt: '2026-03-27T08:00:00Z',
+    flashSale: {
+      active: true,
+      discountPercent: 30,
+      originalPrice: 3000,
+      discountedPrice: 2100,
+      startedAt: '2026-03-28T14:00:00Z',
+      expiresAt: '2026-03-30T14:00:00Z',
+    },
+  },
+  {
+    id: '3',
+    idVendeur: 'v3',
+    vendeurNom: 'Pierre Essono',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.2,
+    nom: 'Piment rouge',
+    categorie: 'Épices',
+    prix: 2000,
+    quantite: 30,
+    unite: 'kg',
+    photoProduct: 'https://images.unsplash.com/photo-1583119022894-919a68a3d0e3?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: 1.6158, longitude: 11.5514, village: 'Oyem' },
+    province: 'Woleu-Ntem',
+    statut: 'disponible',
+    createdAt: '2026-03-26T12:00:00Z',
+  },
+  {
+    id: '4',
+    idVendeur: 'v1',
+    vendeurNom: 'Jean-Baptiste Ndong',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.5,
+    nom: 'Ignames',
+    categorie: 'Tubercules',
+    prix: 4500,
+    quantite: 40,
+    unite: 'tas',
+    photoProduct: 'https://images.unsplash.com/photo-1590165482129-1b8b27698780?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: 0.4162, longitude: 9.4673, village: 'Ntoum' },
+    province: 'Estuaire',
+    statut: 'disponible',
+    createdAt: '2026-03-25T14:00:00Z',
+  },
+  {
+    id: '5',
+    idVendeur: 'v4',
+    vendeurNom: 'Agathe Moussavou',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.9,
+    nom: 'Poisson fumé',
+    categorie: 'Viande & Poisson',
+    prix: 8000,
+    quantite: 25,
+    unite: 'lot',
+    photoProduct: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: -0.7193, longitude: 8.7815, village: 'Port-Gentil' },
+    province: 'Ogooué-Maritime',
+    statut: 'disponible',
+    createdAt: '2026-03-24T09:00:00Z',
+  },
+  {
+    id: '6',
+    idVendeur: 'v5',
+    vendeurNom: 'Samuel Nze',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 3.9,
+    nom: 'Taro',
+    categorie: 'Tubercules',
+    prix: 3500,
+    quantite: 60,
+    unite: 'sac',
+    photoProduct: 'https://images.unsplash.com/photo-1518977676601-b28d4a7aba9b?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: -1.4800, longitude: 14.2333, village: 'Franceville' },
+    province: 'Haut-Ogooué',
+    statut: 'disponible',
+    createdAt: '2026-03-23T11:00:00Z',
+  },
+  {
+    id: '7',
+    idVendeur: 'v2',
+    vendeurNom: 'Marie-Claire Obiang',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.8,
+    nom: 'Arachides grillées',
+    categorie: 'Autre',
+    prix: 1500,
+    quantite: 80,
+    unite: 'sachet',
+    photoProduct: 'https://images.unsplash.com/photo-1567892320421-1c657571ea4a?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: -1.6333, longitude: 13.5833, village: 'Mouila' },
+    province: 'Ngounié',
+    statut: 'disponible',
+    createdAt: '2026-03-22T07:00:00Z',
+  },
+  {
+    id: '8',
+    idVendeur: 'v6',
+    vendeurNom: 'Félicité Mba',
+    vendeurPhoto: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
+    vendeurNote: 4.6,
+    nom: 'Ananas de Kango',
+    categorie: 'Fruits',
+    prix: 2500,
+    quantite: 35,
+    unite: 'pièce',
+    photoProduct: 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600&h=400&fit=crop',
+    coordonneesGPS: { latitude: 0.1667, longitude: 10.1500, village: 'Kango' },
+    province: 'Estuaire',
+    statut: 'disponible',
+    createdAt: '2026-03-21T15:00:00Z',
+    flashSale: {
+      active: true,
+      discountPercent: 40,
+      originalPrice: 2500,
+      discountedPrice: 1500,
+      startedAt: '2026-03-28T10:00:00Z',
+      expiresAt: '2026-03-30T10:00:00Z',
+    },
+  },
+];
+
+export const MOCK_TRANSACTIONS = [
+  {
+    id: 't1',
+    idAcheteur: 'a1',
+    idVendeur: 'v1',
+    idTransporteur: 'tr1',
+    produit: MOCK_PRODUCTS[0],
+    montantTotal: 15000,
+    commissionTransport: 5000,
+    codeEscrow: '4827',
+    statut: 'en_route' as const,
+    createdAt: '2026-03-28T14:00:00Z',
+    acheteurNom: 'Paul Mba',
+    vendeurNom: 'Jean-Baptiste Ndong',
+    transporteurNom: 'Didier Ondo',
+    distance: 12,
+    modeLivraison: 'transporteur' as const,
+  },
+  {
+    id: 't2',
+    idAcheteur: 'a1',
+    idVendeur: 'v2',
+    idTransporteur: null,
+    produit: MOCK_PRODUCTS[1],
+    montantTotal: 9000,
+    commissionTransport: 3000,
+    codeEscrow: '9153',
+    statut: 'paye' as const,
+    createdAt: '2026-03-27T10:00:00Z',
+    acheteurNom: 'Paul Mba',
+    vendeurNom: 'Marie-Claire Obiang',
+    transporteurNom: null,
+    distance: 45,
+    modeLivraison: 'transporteur' as const,
+  },
+];
+export interface VideoDemo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  duration: string;
+  views: number;
+  createdAt: string;
+  productId: string;
+  productName: string;
+  status: 'draft' | 'published' | 'processing';
+}
+
+export interface VideoTip {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export const MOCK_VIDEO_DEMOS: VideoDemo[] = [
+  {
+    id: 'vid1',
+    title: 'Mes bananes plantain de Ntoum',
+    description: 'Regardez la qualité de nos bananes fraîchement récoltées ce matin.',
+    thumbnail: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=600&h=400&fit=crop',
+    duration: '0:45',
+    views: 234,
+    createdAt: '2026-03-27T10:00:00Z',
+    productId: '1',
+    productName: 'Bananes Plantain',
+    status: 'published',
+  },
+  {
+    id: 'vid2',
+    title: 'Récolte des ignames',
+    description: 'Venez voir comment nous cultivons nos ignames bio dans le village.',
+    thumbnail: 'https://images.unsplash.com/photo-1590165482129-1b8b27698780?w=600&h=400&fit=crop',
+    duration: '1:12',
+    views: 156,
+    createdAt: '2026-03-25T14:00:00Z',
+    productId: '4',
+    productName: 'Ignames',
+    status: 'published',
+  },
+  {
+    id: 'vid3',
+    title: 'Notre plantation vue du ciel',
+    description: 'Survol de notre plantation familiale.',
+    thumbnail: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&h=400&fit=crop',
+    duration: '2:03',
+    views: 0,
+    createdAt: '2026-03-28T08:00:00Z',
+    productId: '',
+    productName: '',
+    status: 'processing',
+  },
+];
+
+export const VIDEO_TIPS: VideoTip[] = [
+  {
+    id: 't1',
+    icon: ' ',
+    title: 'Filmez en plein jour',
+    description: 'La lumière naturelle donne un meilleur rendu pour vos produits.',
+  },
+  {
+    id: 't2',
+    icon: ' ',
+    title: 'Minimum 2 minutes',
+    description: 'Vos vidéos doivent durer au moins 2 minutes pour bien présenter vos produits.',
+  },
+  {
+    id: 't3',
+    icon: ' ',
+    title: 'Présentez-vous',
+    description: 'Montrez votre visage et parlez de votre produit avec passion.',
+  },
+  {
+    id: 't4',
+    icon: ' ',
+    title: 'Montrez le terrain',
+    description: 'Filmez votre plantation ou votre lieu de production.',
+  },
+];
+export type UserRole = 'producteur' | 'transporteur' | 'acheteur';
+
+export type KycStatus = 'none' | 'document_pending' | 'liveness_pending' | 'gps_pending' | 'verified' | 'rejected';
+
+export interface KycData {
+  documentPhoto: string | null;
+  documentType: 'cni' | 'passport' | 'permis' | null;
+  extractedName: string | null;
+  extractedBirthdate: string | null;
+  documentExpiry: string | null;
+  selfiePhoto: string | null;
+  livenessVerified: boolean;
+  facialMatchScore: number;
+  gpsPhoto: string | null;
+  gpsLatitude: number | null;
+  gpsLongitude: number | null;
+  gpsProvince: string | null;
+  vehiclePhoto: string | null;
+  insurancePhoto: string | null;
+  verifiedAt: string | null;
+}
+
+export interface User {
+  id: string;
+  nom: string;
+  prenom: string;
+  ville: string;
+  quartier: string;
+  telephone: string;
+  role: UserRole;
+  photoProfile: string;
+  cniVerified: boolean;
+  province: string;
+  walletSolde: number;
+  note: number;
+  createdAt: string;
+  kycStatus: KycStatus;
+  kycData: KycData | null;
+}
+
+export interface FlashSale {
+  active: boolean;
+  discountPercent: number;
+  originalPrice: number;
+  discountedPrice: number;
+  startedAt: string;
+  expiresAt: string;
+}
+
+export interface Product {
+  id: string;
+  idVendeur: string;
+  vendeurNom: string;
+  vendeurPhoto: string;
+  vendeurNote: number;
+  nom: string;
+  categorie: ProductCategory;
+  prix: number;
+  quantite: number;
+  unite: string;
+  photoProduct: string;
+  coordonneesGPS: {
+    latitude: number;
+    longitude: number;
+    village: string;
+  };
+  province: Province;
+  statut: 'disponible' | 'vendu';
+  createdAt: string;
+  flashSale?: FlashSale;
+}
+
+export interface Transaction {
+  id: string;
+  idAcheteur: string;
+  idVendeur: string;
+  idTransporteur: string | null;
+  produit: Product;
+  montantTotal: number;
+  commissionTransport: number;
+  codeEscrow: string;
+  statut: 'paye' | 'en_route' | 'livre' | 'confirme';
+  createdAt: string;
+  acheteurNom: string;
+  vendeurNom: string;
+  transporteurNom: string | null;
+  distance?: number;
+  modeLivraison: DeliveryMode;
+}
+
+export type Province =
+  | 'Estuaire'
+  | 'Haut-Ogooué'
+  | 'Moyen-Ogooué'
+  | 'Ngounié'
+  | 'Nyanga'
+  | 'Ogooué-Ivindo'
+  | 'Ogooué-Lolo'
+  | 'Ogooué-Maritime'
+  | 'Woleu-Ntem';
+
+export type DeliveryMode = 'producteur' | 'acheteur' | 'transporteur';
+
+export type ProductCategory =
+  | 'Tubercules'
+  | 'Fruits'
+  | 'Légumes'
+  | 'Céréales'
+  | 'Viande & Poisson'
+  | 'Épices'
+  | 'Boissons'
+  | 'Autre';
+{
+  "expo": {
+    "name": "GabonMarket",
+    "slug": "uq7kclgwsz6g40zepuaqc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "rork-app",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.rork.uq7kclgwsz6g40zepuaqc"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "app.rork.uq7kclgwsz6g40zepuaqc"
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://rork.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: [["babel-preset-expo", { unstable_transformImportMeta: true }]],
+  };
+};
