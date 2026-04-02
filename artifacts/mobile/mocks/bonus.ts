@@ -1,0 +1,51 @@
+export interface BonusVoyageDestination {
+  id: string;
+  name: string;
+  country: string;
+  image: string;
+  description: string;
+  included: string[];
+}
+
+export interface BonusVoyageWinner {
+  id: string;
+  prenom: string;
+  province: string;
+  photo: string;
+  ventesValidees: number;
+  rank: number;
+  destination: string;
+}
+
+export const VOYAGE_DESTINATIONS: BonusVoyageDestination[] = [
+  {
+    id: 'd1',
+    name: 'Marrakech',
+    country: 'Maroc',
+    image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=600&h=400&fit=crop',
+    description: 'Explorez les souks colorés, les palais et la cuisine marocaine.',
+    included: ['Billet A/R', 'Hôtel 4 étoiles (5 nuits)', 'Visa', 'Restauration', 'Excursions guidées'],
+  },
+  {
+    id: 'd2',
+    name: 'Dubaï',
+    country: 'Émirats Arabes Unis',
+    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&h=400&fit=crop',
+    description: 'Découvrez la ville futuriste, ses gratte-ciels et le désert.',
+    included: ['Billet A/R', 'Hôtel 5 étoiles (4 nuits)', 'Visa', 'Restauration', 'Safari désert'],
+  },
+  {
+    id: 'd3',
+    name: 'Istanbul',
+    country: 'Turquie',
+    image: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=600&h=400&fit=crop',
+    description: 'Entre Orient et Occident, une ville riche en histoire et culture.',
+    included: ['Billet A/R', 'Hôtel 4 étoiles (5 nuits)', 'Visa', 'Restauration', 'Croisière Bosphore'],
+  },
+];
+
+export const PREVIOUS_WINNERS: BonusVoyageWinner[] = [
+  { id: 'w1', prenom: 'Sylvie', province: 'Estuaire', photo: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face', ventesValidees: 1247, rank: 1, destination: 'Marrakech 2025' },
+  { id: 'w2', prenom: 'Emmanuel', province: 'Woleu-Ntem', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face', ventesValidees: 1089, rank: 2, destination: 'Marrakech 2025' },
+  { id: 'w3', prenom: 'Béatrice', province: 'Ngounié', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face', ventesValidees: 978, rank: 3, destination: 'Marrakech 2025' },
+];
