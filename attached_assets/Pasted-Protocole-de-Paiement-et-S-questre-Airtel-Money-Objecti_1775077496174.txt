@@ -1,0 +1,27 @@
+Protocole de Paiement et Séquestre (Airtel Money)
+Objectif : Garantir que les fonds sont disponibles avant le transport, mais ne sont libérés qu'après preuve de livraison certifiée par IA.
+
+Étape A (Validation Panier) : Dès que l'acheteur valide la caisse, un déclencheur API (Airtel Money) effectue le débit immédiat.
+
+Étape B (Mise en Séquestre) : L'argent n'est pas versé au vendeur. Il est bloqué sur un compte de transit sécurisé géré par l'application.
+
+Étape C (Preuve de Livraison IA) : * À l'arrivée, le transporteur doit prendre une photo de l'acheteur avec la marchandise via l'interface de l'application.
+
+Validation IA : Un algorithme de vision par ordinateur (ex: Google Vision API ou modèle personnalisé) vérifie l'authenticité de la photo (détection de présence humaine et présence de l'objet).
+
+Étape D (Code de Déblocage) : * Une fois la photo validée par l'IA, le système génère automatiquement un Code de Confirmation Unique envoyé par notification/SMS à l'acheteur.
+
+L'acheteur remet ce code au transporteur.
+
+Étape E (Libération des Fonds) : Le transporteur saisit le code dans son application. Si le code est correct, le système débloque instantanément l'argent du compte séquestre vers le portefeuille du producteur/vendeur.
+
+2. Module de Connectivité : VPN Adaptatif & Mode Hors-ligne
+Objectif : Assurer la continuité du service dans les zones à faible couverture (zones rurales ou zones blanches).
+
+Détection de latence : L'application doit surveiller en temps réel la qualité du réseau (Ping et débit).
+
+Activation Automatique (VPN/Proxy) : Si la connexion est lente ou restreinte, l'application active un tunnel de données compressées (VPN léger) pour prioriser l'envoi des données critiques (codes de validation et photos).
+
+Gestion du Cache (Offline First) : * Si la connexion est totalement inexistante, la photo et le code sont stockés localement dans une base de données chiffrée (ex: SQLite).
+
+Dès que l'appareil capte un signal minimum, la synchronisation vers le serveur de séquestre se fait automatiquement en arrière-plan.
